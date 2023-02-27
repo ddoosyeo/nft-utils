@@ -1,6 +1,12 @@
 import { ethers } from 'ethers';
+import { resolve } from 'path';
+import { writeFile } from 'fs/promises';
+import { dirname } from 'path';
+import { fileURLToPath } from 'url';
 
 import { JobArg, Tokens, Log } from './types.mjs';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const ABI = [
   'event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)',
@@ -20,8 +26,7 @@ export const getHolderList = async (arg: JobArg) => {
   const searchRange = [{ start: 0, end: currentBlock }];
 
   while (searchRange.length > 0) {
-    const { start, end } = searchRange.pop()!;
-
+    const { start, end } = searchRange.pop() as { start: number, end: number };
     try {
       const events = await contract.queryFilter('Transfer', start, end);
       if (!events || events.length === 0) continue;
@@ -41,7 +46,7 @@ export const getHolderList = async (arg: JobArg) => {
 
       const middle = parseInt(`${(start + end) / 2}`);
       searchRange.push({ start: middle + 1, end: end });
-      searchRange.push({ start: start, end: end });
+      searchRange.push({ start: start, end: middle });
     }
   }
 
@@ -55,5 +60,5 @@ export const getHolderList = async (arg: JobArg) => {
     tokens[log.tokenId] = log.to;
   }
 
-  console.log(tokens);
+  writeFile(resolve(__dirname, `../../output/holder-list-${arg.nftAddress}.json`), JSON.stringify(tokens, null, 2));
 }
